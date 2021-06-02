@@ -20,8 +20,6 @@ Mandatory arguments:
 
 Optional arguments:
 ```
-    --genesFile     Tab-delimited file with gene info, with the following columns: 'hgnc'  'chrom'  'start'  'end'  'band' 
-                    [{baseDir}/annotations/hg38.wxs.GeneSymbols.txt]
     --snp_pileup    Full path to the folder containing the snp_pileup files (you might want to use this when re-running facets)
     --summaryPrefix Prefix for the summary files [all.geneCN]
     --q             (snp-pileup) Sets the minimum threshold for mapping quality [1]

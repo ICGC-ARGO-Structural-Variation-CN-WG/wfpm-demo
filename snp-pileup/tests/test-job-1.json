@@ -2,7 +2,7 @@
     "tumor_bam": "input/test_T.bam",
     "normal_bam": "input/test_N.bam",
     "dbsnp": "input/test.dbsnp_138.hg19.vcf",
-    "expected_output": "expected/test_T.bc.gz",
+    "expected_output": "expected/expected.bc.gz",
     "publish_dir": "outdir",
     "cpus": 1,
     "mem": 0.5

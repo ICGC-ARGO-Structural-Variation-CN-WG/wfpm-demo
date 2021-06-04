@@ -48,7 +48,10 @@ params.container_version = ""
 params.container = ""
 
 // tool specific parmas go here, add / change as needed
-params.input_file = ""
+// params.input_file = ""
+params.tumor_bam      = ""
+params.normal_bam     = ""
+params.dbsnp          = ""
 params.expected_output = ""
 
 include { snpPileup } from '../main'
@@ -74,7 +77,9 @@ process file_smart_diff {
 
 workflow checker {
   take:
-    input_file
+    tumor_bam
+    normal_bam
+    dbsnp
     expected_output
 
   main:
@@ -93,7 +98,9 @@ workflow checker {
 
 workflow {
   checker(
-    file(params.input_file),
+    file(params.tumor_bam),
+    file(params.normal_bam),
+    file(params.dbsnp),
     file(params.expected_output)
   )
 }

@@ -45,12 +45,19 @@ params.container = ""
 
 params.cpus = 1
 params.mem = 1  // GB
-params.publish_dir = ""  // set to empty string will disable publishDir
+params.publish_dir = "outdir"  // set to empty string will disable publishDir
 
 
 // tool specific parmas go here, add / change as needed
-params.input_file = ""
-params.output_pattern = "*.html"  // output file name pattern
+params.tumor_bam      = ""
+params.normal_bam     = ""
+params.dbsnp          = "${baseDir}/resources/dbsnp_151.common.hg38.vcf.gz"
+params.q              = 15
+params.Q              = 20
+params.r              = '25,0'
+params.d              = 1000
+params.P              = 100
+params.output_pattern = "*.bc.gz"  // output file name pattern
 
 
 process snpPileup {
@@ -61,22 +68,22 @@ process snpPileup {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    path input_file
+    path tumor_bam
+    path normal_bam
+    path dbsnp
 
   output:  // output, make update as needed
     path "output_dir/${params.output_pattern}", emit: output_file
 
-  script:
+  shell:
     // add and initialize variables here as needed
 
-    """
+    '''
     mkdir -p output_dir
+    
+    snp-pileup -P !{params.P} -A -d !{params.d} -g -q !{params.q} -Q !{params.Q} -r !{params.r} !{dbsnp} output_dir/$(basename !{tumor_bam} .bam).bc.gz !{normal_bam} !{tumor_bam}
 
-    main.py \
-      -i ${input_file} \
-      -o output_dir
-
-    """
+    '''
 }
 
 
@@ -84,6 +91,8 @@ process snpPileup {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   snpPileup(
-    file(params.input_file)
+    file(params.tumor_bam),
+    file(params.normal_bam),
+    file(params.dbsnp)
   )
 }

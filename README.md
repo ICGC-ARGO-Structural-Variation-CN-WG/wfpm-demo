@@ -1,3 +1,3 @@
-# Manta Structural Variant Caller
+# Awesome Workflow Packages
 
 Update this to describe your awesome project.

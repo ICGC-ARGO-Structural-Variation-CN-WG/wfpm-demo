@@ -46,7 +46,7 @@ params.container = ""
 params.cpus = 1
 params.mem = 1  // GB
 params.publish_dir = "outdir"  // set to empty string will disable publishDir
-
+params.help = null
 
 // tool specific parmas go here, add / change as needed
 params.tumor_bam      = ""
@@ -58,6 +58,46 @@ params.r              = '5,0'
 params.d              = 1000
 params.P              = 100
 params.output_pattern = "*.bc.gz"  // output file name pattern
+
+
+
+def helpMessage() {
+    log.info"""
+
+USAGE
+
+The typical command for running the pipeline is as follows:
+    nextflow run snp-pileup/main.nf --tumor_bam <tumor BAM> --normal_bam <normal BAM> --dbsnp <dbsnp vcf>
+
+Mandatory arguments:
+    --tumor_bam     Path to the tumor BAM.
+    --normal_bam    Path to the normal BAM.
+    --dbsnp         Path to the germline resource VCF.
+                    Default is 'snp-pileup/resources/dbsnp_151.common.hg38.vcf.gz'.
+                    You need to execute 'snp-pileup/scripts/fetch_resources.sh' to fetch this file before you can run this module.
+
+Optional arguments:
+    --r             Minimum tumor and normal read counts for a position, in that order. [${params.r}]
+    --q             Sets the minimum threshold for mapping quality [${params.q}]
+    --Q             Sets the minimum threshold for base quality [${params.Q}]
+    --d             Sets the maximum depth [${params.d}]
+    --P             Insert a pseudo SNP every [${params.P}] positions, with the total count at that position.
+                    This is used to reduce large gaps between consecutive SNPs and still get consistent read counts across the genome.
+    """.stripIndent()
+}
+
+if (params.help) exit 0, helpMessage()
+
+log.info ""
+log.info "tumor_bam=${params.tumor_bam}"
+log.info "normal_bam=${params.normal_bam}"
+log.info ""
+
+
+// Validate inputs
+if(params.tumor_bam == null) error "Missing mandatory '--tumor_bam' parameter"
+if(params.normal_bam == null) error "Missing mandatory '--normal_bam' parameter"
+
 
 
 process snpPileup {

@@ -3,7 +3,7 @@
     "normal_bam": "input/test_N.bam",
     "dbsnp": "input/test.dbsnp_138.hg19.vcf",
     "expected_output": "expected/expected.bc.gz",
-    "publish_dir": "outdir",
+    "publish_dir": ".",
     "cpus": 1,
     "mem": 0.5
 }

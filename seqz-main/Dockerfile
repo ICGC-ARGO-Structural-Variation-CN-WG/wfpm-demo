@@ -1,11 +1,16 @@
-FROM pegi3s/fastqc:0.11.9
+FROM continuumio/miniconda3:4.8.2
+# newer version results in conflicts.
 
-LABEL org.opencontainers.image.source https://github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo
+RUN apt-get update \
+    && apt-get install -y procps \
+           
+    && /opt/conda/bin/conda install --yes -c bioconda samtools=1.9 tabix \
+    && /opt/conda/bin/conda install --yes -c bioconda sequenza-utils=3.0.0 \
+    && /opt/conda/bin/conda install --yes -c bioconda r-sequenza=3.0.0 \
+    && git clone https://github.com/aroneklund/copynumber.git \
+    && /opt/conda/bin/R CMD INSTALL copynumber
 
-ENV PATH="/tools:${PATH}"
-
-COPY *.py /tools/
-
-ENTRYPOINT ["/usr/bin/env"]
+USER sequenza
+WORKDIR /home/sequenza
 
 CMD ["/bin/bash"]

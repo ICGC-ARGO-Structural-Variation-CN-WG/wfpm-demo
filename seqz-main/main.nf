@@ -45,12 +45,12 @@ params.container = ""
 
 params.cpus = 1
 params.mem = 1  // GB
-params.publish_dir = ""  // set to empty string will disable publishDir
+params.publish_dir = "output_dir/"  // set to empty string will disable publishDir
 
 
 // tool specific parmas go here, add / change as needed
 params.input_file = ""
-params.output_pattern = "*.html"  // output file name pattern
+params.output_pattern = "*.pdf|*.txt|*.RData"  // output file name pattern
 
 
 process seqzMain {
@@ -61,7 +61,7 @@ process seqzMain {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    path input_file
+    path seqz
 
   output:  // output, make update as needed
     path "output_dir/${params.output_pattern}", emit: output_file

@@ -69,7 +69,7 @@ process seqzPreprocess {
     path gcwiggle
 
   output:  // output, make update as needed
-    path "${params.output_pattern}", emit: output_file
+    path "${params.output_pattern}", emit: seqz
 
   script:
     // add and initialize variables here as needed

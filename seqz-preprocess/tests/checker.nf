@@ -61,7 +61,7 @@ process file_smart_diff {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
 
   input:
-    path output_file
+    path seqz
     path expected_file
 
   output:
@@ -69,7 +69,7 @@ process file_smart_diff {
 
   script:
     """
-    zdiff ${output_file} ${expected_file} \
+    zdiff ${seqz} ${expected_file} \
       && ( echo "Test PASSED" && exit 0 ) || ( echo "Test FAILED, output file mismatch." && exit 1 )
     """
 }
@@ -92,7 +92,7 @@ workflow checker {
     )
 
     file_smart_diff(
-      seqzPreprocess.out.output_file,
+      seqzPreprocess.out.seqz,
       expected_output
     )
 }

@@ -52,7 +52,7 @@ params.publish_dir = "output_dir/"  // set to empty string will disable publishD
 params.seqz = ""
 params.genome = 'hg38'
 params.runscript      = "${baseDir}/scripts/runSequenza.R"
-params.output_pattern = "*.pdf|*.txt|*.RData"  // output file name pattern
+params.output_pattern = "*_*"  // output file name pattern |*.txt|*.RData
 
 
 process seqzMain {
@@ -67,7 +67,7 @@ process seqzMain {
     path runscript
 
   output:  // output, make update as needed
-    path "output_dir/${params.output_pattern}", emit: output_file
+    path "${params.output_pattern}"
 
   shell:
     // add and initialize variables here as needed

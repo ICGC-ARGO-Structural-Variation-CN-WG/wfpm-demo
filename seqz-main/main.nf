@@ -43,8 +43,8 @@ params.container_registry = ""
 params.container_version = ""
 params.container = ""
 
-params.cpus = 1
-params.mem = 1  // GB
+params.cpus = 4
+params.mem = 16  // GB
 params.publish_dir = "output_dir/"  // set to empty string will disable publishDir
 
 
@@ -52,7 +52,7 @@ params.publish_dir = "output_dir/"  // set to empty string will disable publishD
 params.seqz = ""
 params.genome = 'hg38'
 params.runscript      = "${baseDir}/scripts/runSequenza.R"
-params.output_pattern = "*_*"  // output file name pattern are *.pdf|*.txt|*.RData
+params.output_pattern = "*_*" // output file name pattern are *.pdf|*.txt|*.RData
 
 
 process seqzMain {
@@ -67,7 +67,8 @@ process seqzMain {
     path runscript
 
   output:  // output, make update as needed
-    path "${params.output_pattern}"
+    path "${params.output_pattern}", emit: results
+    path "*segments.txt", emit: segments
 
   shell:
     // add and initialize variables here as needed

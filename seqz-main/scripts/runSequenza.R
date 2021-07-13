@@ -1,3 +1,5 @@
+set.seed(1234)
+
 ##################################
 # Load packages and parse inputs #
 ##################################
@@ -23,7 +25,7 @@ if (is.null(opt[["seqz"]]) | is.null(opt[["genome"]])) {
   stop("One or more mandatory arguments missing.", call.=FALSE)
 }
 
-sample_id = sub("_bin50.seqz.gz", "", opt[["seqz"]])
+sample_id = sub("_bin50.seqz.gz|.seqz.txt.gz", "", opt[["seqz"]])
 
 
 # process seqz data, normalization and segmentation

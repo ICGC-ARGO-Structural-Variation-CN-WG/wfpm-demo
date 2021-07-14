@@ -37,26 +37,44 @@ params.mem = 1  // GB
 params.publish_dir = ""  // set to empty string will disable publishDir
 
 // tool specific parmas go here, add / change as needed
-params.input_file = ""
-params.cleanup = true
+params.tumor_bam      = ""
+params.normal_bam     = ""
+params.gcwiggle       = ""
+params.fasta          = ""
+params.runscript      = ""
 
-include { demoCopyFile } from "./local_modules/demo-copy-file"
+//include { demoCopyFile } from "./local_modules/demo-copy-file"
 include { seqzPreprocess } from './wfpr_modules/github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo/seqz-preprocess@0.2.0/main.nf' params([*:params, 'cleanup': false])
 include { seqzMain } from './wfpr_modules/github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo/seqz-main@0.2.0/main.nf' params([*:params, 'cleanup': false])
 
 
 // please update workflow code as needed
 workflow SequenzaWf {
-  take:  // update as needed
-    input_file
 
+  take:
+    tumor_bam
+    normal_bam
+    gcwiggle
+    fasta
+    runscript
 
-  main:  // update as needed
-    demoCopyFile(input_file)
+  main:
+    seqzPreprocess(
+      tumor_bam,
+      normal_bam,
+      gcwiggle,
+      fasta
+    )
+    
+    seqzMain(
+      seqzPreprocess.out.seqz,
+      runscript
+    )
 
 
   emit:  // update as needed
-    output_file = demoCopyFile.out.output_file
+    results = seqzMain.out.results
+    segments = seqzMain.out.segments
 
 }
 
@@ -65,6 +83,9 @@ workflow SequenzaWf {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   SequenzaWf(
-    file(params.input_file)
+    file(params.tumor_bam),
+    file(params.normal_bam),
+    file(params.fasta),
+    file(params.gcwiggle)
   )
 }

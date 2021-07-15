@@ -9,6 +9,8 @@ RUN apt-get update \
 
 ENV PATH="/tools:${PATH}"
 
-COPY scripts/runSequenza.R /tools/
+COPY runSequenza.R /tools/
+
+ENTRYPOINT ["/usr/bin/env"]
 
 CMD ["/bin/bash"]

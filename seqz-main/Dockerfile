@@ -7,7 +7,7 @@ RUN apt-get update \
     && git clone https://github.com/aroneklund/copynumber.git \
     && /opt/conda/bin/R CMD INSTALL copynumber
 
-COPY /scripts/*.R /home/
+COPY /scripts/Runscript.R /tools/
 
 USER sequenza
 WORKDIR /home/sequenza

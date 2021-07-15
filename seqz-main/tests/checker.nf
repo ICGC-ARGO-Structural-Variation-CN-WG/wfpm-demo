@@ -49,7 +49,6 @@ params.container = ""
 
 // tool specific parmas go here, add / change as needed
 params.seqz = ""
-params.runscript = ""
 params.expected_output = ""
 
 include { seqzMain } from '../main'
@@ -76,13 +75,11 @@ process file_smart_diff {
 workflow checker {
   take:
     seqz
-    runscript
     expected_output
 
   main:
     seqzMain(
-      seqz,
-      runscript
+      seqz
     )
 
     file_smart_diff(
@@ -95,7 +92,6 @@ workflow checker {
 workflow {
   checker(
     file(params.seqz),
-    file(params.runscript),
     file(params.expected_output)
   )
 }

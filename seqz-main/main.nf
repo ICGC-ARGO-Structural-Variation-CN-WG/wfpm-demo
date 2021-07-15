@@ -51,7 +51,6 @@ params.publish_dir = "output_dir/"  // set to empty string will disable publishD
 // tool specific parmas go here, add / change as needed
 params.seqz = ""
 params.genome = 'hg38'
-params.runscript      = "${baseDir}/scripts/runSequenza.R"
 params.output_pattern = "*_*" // output file name pattern are *.pdf|*.txt|*.RData
 
 
@@ -64,7 +63,6 @@ process seqzMain {
 
   input:  // input, make update as needed
     path seqz
-    path runscript
 
   output:  // output, make update as needed
     path "${params.output_pattern}", emit: results
@@ -74,7 +72,7 @@ process seqzMain {
     // add and initialize variables here as needed
 
     """
-    Rscript !{runscript} --seqz !{seqz} --genome !{params.genome}
+    Rscript runSequenza.R --seqz !{seqz} --genome !{params.genome}
     """
 }
 
@@ -83,7 +81,6 @@ process seqzMain {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   seqzMain(
-    file(params.seqz),
-    file(params.runscript)
+    file(params.seqz)
   )
 }

@@ -72,7 +72,7 @@ process seqzMain {
     // add and initialize variables here as needed
 
     """
-    Rscript runSequenza.R --seqz !{seqz} --genome !{params.genome}
+    Rscript /tools/runSequenza.R --seqz !{seqz} --genome !{params.genome}
     """
 }
 

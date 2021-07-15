@@ -29,7 +29,7 @@
 /* this block is auto-generated based on info from pkg.json where   */
 /* changes can be made if needed, do NOT modify this block manually */
 nextflow.enable.dsl = 2
-version = '0.2.0'  // package version
+version = '0.3.0'  // package version
 
 container = [
     'ghcr.io': 'ghcr.io/icgc-argo-structural-variation-cn-wg/wfpm-demo.seqz-main'
@@ -51,7 +51,6 @@ params.publish_dir = "output_dir/"  // set to empty string will disable publishD
 // tool specific parmas go here, add / change as needed
 params.seqz = ""
 params.genome = 'hg38'
-params.runscript      = "${baseDir}/scripts/runSequenza.R"
 params.output_pattern = "*_*" // output file name pattern are *.pdf|*.txt|*.RData
 
 
@@ -64,7 +63,6 @@ process seqzMain {
 
   input:  // input, make update as needed
     path seqz
-    path runscript
 
   output:  // output, make update as needed
     path "${params.output_pattern}", emit: results
@@ -74,7 +72,7 @@ process seqzMain {
     // add and initialize variables here as needed
 
     """
-    Rscript !{runscript} --seqz !{seqz} --genome !{params.genome}
+    Rscript runSequenza.R --seqz !{seqz} --genome !{params.genome}
     """
 }
 
@@ -84,6 +82,5 @@ process seqzMain {
 workflow {
   seqzMain(
     file(params.seqz),
-    file(params.runscript)
   )
 }

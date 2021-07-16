@@ -41,7 +41,7 @@ params.tumor_bam      = ""
 params.normal_bam     = ""
 params.gcwiggle       = ""
 params.fasta          = ""
-params.runscript      = ""
+
 
 //include { demoCopyFile } from "./local_modules/demo-copy-file"
 include { seqzPreprocess } from './wfpr_modules/github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo/seqz-preprocess@0.2.0/main.nf' params([*:params, 'cleanup': false])
@@ -56,7 +56,6 @@ workflow SequenzaWf {
     normal_bam
     gcwiggle
     fasta
-    runscript
 
   main:
     seqzPreprocess(
@@ -67,8 +66,7 @@ workflow SequenzaWf {
     )
     
     seqzMain(
-      seqzPreprocess.out.seqz,
-      runscript
+      seqzPreprocess.out.seqz
     )
 
 
@@ -85,7 +83,7 @@ workflow {
   SequenzaWf(
     file(params.tumor_bam),
     file(params.normal_bam),
-    file(params.fasta),
-    file(params.gcwiggle)
+    file(params.gcwiggle),
+    file(params.fasta)
   )
 }

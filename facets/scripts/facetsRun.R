@@ -1,15 +1,23 @@
+#!/usr/bin/env Rscript
+
 # run the facets library
 
 # Version changelog:
 # v2:
-# Sourcing runFacets_myplot.R from the same folder of this script, wherever that might be.
+#  Sourcing runFacets_myplot.R from the same folder of this script, wherever that might be.
 # v2.1:
-# Added '--tumorName' and '--normalName' options to account for different naming schemes.
-# Account for the possibility that '--cval2' and '--pre_cval' are passed with a string 'NULL'
-# v2.2:
-# set seed
-
-set.seed(1234)
+#  Added '--tumorName' and '--normalName' options to account for different naming schemes.
+#  Account for the possibility that '--cval2' and '--pre_cval' are passed with a string 'NULL'
+# v3:
+#  set seed
+#  use a default pre_cval
+#  use only one cval (remove cval2; cval1 -> cval)
+#  increase cval by 50 if hyperfragmented (save as additional result files).
+#  add max_segs to define hyperfragmentation.
+# v3.icgc-argo:
+#  remove normalName
+#  no cval increase steps
+#  omit runFacets_myplot.R and plotting only logR.
 
 suppressPackageStartupMessages(library("optparse"));
 suppressPackageStartupMessages(library("RColorBrewer"));
@@ -22,26 +30,30 @@ suppressPackageStartupMessages(library("facets"));
 suppressPackageStartupMessages(library("foreach"));
 #suppressPackageStartupMessages(library("Cairo"));
 
+
+
+
 if (!interactive()) {
     options(warn = -1, error = quote({ traceback(); q('no', status = 1) }))
 }
 
 optList <- list(
+	make_option("--seed", default = 1234, type = 'integer', help = "seed for reproducibility"),
 	make_option("--snp_nbhd", default = 250, type = 'integer', help = "window size"),
-	make_option("--minNDepth", default = 25, type = 'integer', help = "minimum depth in normal to keep the position"),
-	make_option("--maxNDepth", default= 1000, type= 'integer', help = "maximum depth in normal to keep the position"),
-	make_option("--pre_cval", default = NULL, type = 'integer', help = "pre-processing critical value"),
-	make_option("--cval1", default = NULL, type = 'integer', help = "critical value for estimating diploid log Ratio"),
-	make_option("--cval2", default = NULL, type = 'integer', help = "starting critical value for segmentation (increases by 25 until success)"),
-	make_option("--max_cval", default = 5000, type = 'integer', help = "maximum critical value for segmentation (increases by 25 until success)"),
+	make_option("--minNDepth", default = 5, type = 'integer', help = "minimum depth in normal to keep the position"),
+	make_option("--maxNDepth", default= 500, type= 'integer', help = "maximum depth in normal to keep the position"),
+	make_option("--pre_cval", default = 80, type = 'integer', help = "pre-processing critical value"),
+	make_option("--cval", default = NULL, type = 'integer', help = "critical value for estimating diploid log Ratio"),
+	make_option("--max_cval", default = 5000, type = 'integer', help = "maximum critical value for segmentation (increases by 100 until success)"),
 	make_option("--min_nhet", default = 25, type = 'integer', help = "minimum number of heterozygote snps in a segment used for bivariate t-statistic during clustering of segment"),
-	make_option("--genome", default = 'b37', type = 'character', help = "genome of counts file"),
+	make_option("--genome", default = 'hg38', type = 'character', help = "genome of counts file"),
 	make_option("--unmatched", default=FALSE, type=NULL,  help="is it unmatched?"),
 	make_option("--minGC", default = 0, type = NULL, help = "min GC of position"),
 	make_option("--maxGC", default = 1, type = NULL, help = "max GC of position"),
+	make_option("--max_segs", default = 3000, type = 'integer', help = "max number of segments to avoid hyperfragmentation"),
 	make_option("--outPrefix", default = NULL, help = "output prefix"),
-	make_option("--tumorName", default = NULL, help = "tumorName"),
-	make_option("--normalName", default = NULL, help = "normalName"))
+	make_option("--tumorName", default = NULL, help = "tumorName")
+)
 
 parser <- OptionParser(usage = "%prog [options] [tumor-normal base counts file]", option_list = optList);
 
@@ -58,10 +70,6 @@ if (length(arguments$args) < 1) {
     stop();
 } else if (is.null(opt$tumorName)) {
     cat("Need tumorName\n")
-    print_help(parser);
-    stop();
-} else if (is.null(opt$normalName)) {
-    cat("Need normalName\n")
     print_help(parser);
     stop();
 } else {
@@ -104,63 +112,30 @@ if (gbuild %in% c("hg19", "hg18")) { chromLevels=intersect(chromLevels, c(1:22,"
 } else { chromLevels=intersect(chromLevels, c(1:19,"X"))}
 print(chromLevels)
 
-if(is.null(opt$cval1)) { stop("cval1 cannot be NULL")}
-if(is.null(opt$pre_cval)) { opt$pre_cval = opt$cval1-50 }
-if(is.null(opt$cval2)) { opt$cval2 = opt$cval1-50}
-# In case option was passed as 'NULL' string:
-if(opt$pre_cval == 'NULL') { opt$pre_cval = opt$cval1-50 }
-if(opt$cval2 == 'NULL') { opt$cval2 = opt$cval1-50}
+if(is.null(opt$cval)) { stop("cval cannot be NULL")}
 
+set.seed(opt$seed)
 
 if (opt$minGC == 0 & opt$maxGC == 1) {
 	preOut=preProcSample(rcmat, snp.nbhd = opt$snp_nbhd, ndepth = opt$minNDepth, cval = opt$pre_cval, 
 		gbuild=gbuild, ndepthmax=opt$maxNDepth, unmatched=opt$unmatched)
 } else {
-    if (gbuild %in% c("hg19", "hg18"))
-      	 nX <- 23
-    if (gbuild %in% c("mm9", "mm10"))
+	if (gbuild %in% c("hg19", "hg18", "hg38"))
+		nX <- 23
+	if (gbuild %in% c("mm9", "mm10"))
 	 nX <- 20
 	pmat <- facets:::procSnps(rcmat, ndepth=opt$minNDepth, het.thresh = 0.25, snp.nbhd = opt$snp_nbhd, 
 		gbuild=gbuild, unmatched=opt$unmatched, ndepthmax=opt$maxNDepth)
 	dmat <- facets:::counts2logROR(pmat[pmat$rCountT > 0, ], gbuild, unmatched=opt$unmatched)
         dmat$keep[which(dmat$gcpct>=opt$maxGC | dmat$gcpct<=opt$minGC)] <- 0
 	dmat <- dmat[dmat$keep == 1,]
-	tmp <- facets:::segsnps(dmat, opt$pre_cval, hetscale=F)
+	tmp1 <- facets:::segsnps(dmat, opt$pre_cval, hetscale=F)
 	pmat$keep <- 0
 	pmat$keep[which(paste(pmat$chrom, pmat$maploc, sep="_") %in% paste(dmat$chrom, dmat$maploc, sep="_"))] <- 1
 
-	out <- list(pmat = pmat, gbuild=gbuild, nX=nX)
-	preOut <- c(out,tmp)
+	tmp2 <- list(pmat = pmat, gbuild=gbuild, nX=nX)
+	preOut <- c(tmp2,tmp1)
 }
-
-out1 <- preOut %>% procSample(cval = opt$cval1, min.nhet = opt$min_nhet)
-
-cat ("Completed preProc and proc\n")
-cat ("procSample FLAG is", out1$FLAG, "\n")
-
-save(preOut, out1, file = str_c(opt$outPrefix, ".Rdata"), compress=T)
-
-cval <- opt$cval2
-success <- F
-while (!success && cval < opt$max_cval) {
-    out2 <- preOut %>% procSample(cval = cval, min.nhet = opt$min_nhet, dipLogR = out1$dipLogR)
-    print(str_c("attempting to run emncf() with cval2 = ", cval))
-    fit <- tryCatch({
-        out2 %>% emcncf
-    }, error = function(e) {
-        print(paste("Error:", e))
-        return(NULL)
-    })
-    if (!is.null(fit)) {
-        success <- T
-        cat ("emcncf was successful with cval", cval, "\n")
-    } else {
-        cval <- cval + 25
-    }
-}
-if (!success) {
-    stop("Failed to segment data\n")
-} else { print ("Completed segmentation")}
 
 formatSegmentOutput <- function(out,sampID) {
 	seg=list()
@@ -177,46 +152,74 @@ formatSegmentOutput <- function(out,sampID) {
 	}	
 	as.data.frame(seg)
 }
-id <- paste(opt$tumorName, opt$normalName, sep = '_')
-out2$IGV = formatSegmentOutput(out2, id)
-save(preOut, out1, out2, fit, file = str_c(opt$outPrefix, ".Rdata"), compress=T)
 
-if(sum(out2$out$num.mark)<=10000) { height=4; width=7} else { height=6; width=9}
-pdf(file = str_c(opt$outPrefix, ".cncf.pdf"), height = height, width = width)
-plotSample(out2, fit)
-dev.off()
+out <- preOut %>% procSample(cval = opt$cval, min.nhet = opt$min_nhet)
 
-# Sourcing runFacets_myplot.R from the same location of this script, wherever that might be.
-initial.options <- commandArgs(trailingOnly = FALSE)
-file.arg.name <- "--file="
-script.name <- sub(file.arg.name, "", initial.options[grep(file.arg.name, initial.options)])
-script.basename <- dirname(script.name)
-other.name <- file.path(script.basename, "runFacets_myplot.R")
-print(paste("Sourcing",other.name))
-source(other.name)
+cat ("Completed preProc and proc\n")
+cat ("procSample FLAG is", out$FLAG, "\n")
 
-if(sum(out2$out$num.mark)<=10000) { height=2.5; width=7} else { height=2.5; width=8}
-pdf(file = str_c(opt$outPrefix, ".logR.pdf"), height = height, width = width)
-myPlotFACETS(out2, fit, plot.type="logR")
-dev.off()
+# save all objects except pileup
+save(file = str_c(opt$outPrefix, ".Rdata"), list = ls()[!grepl("^rcmat", ls())],  compress=T)
 
-write.table(fit$cncf, str_c(opt$outPrefix, ".cncf.txt"), row.names = F, quote = F, sep = '\t')
+# Run emncf, don't break if error:
+print(str_c("attempting to run emncf() with cval = ", opt$cval))
+fit <- tryCatch({
+	out %>% emcncf
+}, error = function(e) {
+	print(paste("Error:", e))
+	return(NULL)
+})
+if (!is.null(fit)) {
+	cat ("emcncf was successful with cval", opt$cval, "\n")
+	
+	# make a table viewable in IGV
+	out$IGV = formatSegmentOutput(out, opt$tumorName)
+	
+	# plot facets results
+	if(sum(out$out$num.mark)<=10000) { height=4; width=7} else { height=6; width=9}
+	pdf(file = str_c(opt$outPrefix, ".cncf.pdf"), height = height, width = width)
+	plotSample(out, fit)
+	dev.off()
+	
+	# save cncf table
+	write.table(fit$cncf, str_c(opt$outPrefix, ".cncf.txt"), row.names = F, quote = F, sep = '\t')
+	
+	# save results and metrics
+	ff = str_c(opt$outPrefix, ".out")
+	cat("# Version =", version, "\n", file = ff, append = T)
+	cat("# Input =", basename(baseCountFile), "\n", file = ff, append = T)
+	cat("# tumor =", opt$tumorName, "\n", file = ff, append = T)
+	cat("# snp.nbhd =", opt$snp_nbhd, "\n", file = ff, append = T)
+	cat("# cval =", opt$cval, "\n", file = ff, append = T)
+	cat("# min.nhet =", opt$min_nhet, "\n", file = ff, append = T)
+	cat("# genome =", opt$genome, "\n", file = ff, append = T)
+	cat("# Purity =", fit$purity, "\n", file = ff, append = T)
+	cat("# Ploidy =", fit$ploidy, "\n", file = ff, append = T)
+	cat("# dipLogR =", fit$dipLogR, "\n", file = ff, append = T)
+	cat("# dipt =", fit$dipt, "\n", file = ff, append = T)
+	cat("# loglik =", fit$loglik, "\n", file = ff, append = T)
 
-ff = str_c(opt$outPrefix, ".out")
-cat("# Version =", version, "\n", file = ff, append = T)
-cat("# Input =", basename(baseCountFile), "\n", file = ff, append = T)
-cat("# tumor =", opt$tumorName, "\n", file = ff, append = T)
-cat("# normal =", opt$normalName, "\n", file = ff, append = T)
-cat("# snp.nbhd =", opt$snp_nbhd, "\n", file = ff, append = T)
-cat("# cval1 =", opt$cval1, "\n", file = ff, append = T)
-cat("# cval2 =", cval, "\n", file = ff, append = T)
-cat("# min.nhet =", opt$min_nhet, "\n", file = ff, append = T)
-cat("# genome =", opt$genome, "\n", file = ff, append = T)
-cat("# Purity =", fit$purity, "\n", file = ff, append = T)
-cat("# Ploidy =", fit$ploidy, "\n", file = ff, append = T)
-cat("# dipLogR =", fit$dipLogR, "\n", file = ff, append = T)
-cat("# dipt =", fit$dipt, "\n", file = ff, append = T)
-cat("# loglik =", fit$loglik, "\n", file = ff, append = T)
+} else {
+	cat ("emcncf failed with cval", opt$cval, "\n")
+	fit <- NULL
+	ff = str_c(opt$outPrefix, ".out")
+	cat("# Version =", version, "\n", file = ff, append = T)
+	cat("# Input =", basename(baseCountFile), "\n", file = ff, append = T)
+	cat("# tumor =", opt$tumorName, "\n", file = ff, append = T)
+	cat("# snp.nbhd =", opt$snp_nbhd, "\n", file = ff, append = T)
+	cat("# cval =", opt$cval, "\n", file = ff, append = T)
+	cat("# min.nhet =", opt$min_nhet, "\n", file = ff, append = T)
+	cat("# genome =", opt$genome, "\n", file = ff, append = T)
+	cat("# Purity =", "failed", "\n", file = ff, append = T)
+	cat("# Ploidy =", "failed", "\n", file = ff, append = T)
+	cat("# dipLogR =", "failed", "\n", file = ff, append = T)
+	cat("# dipt =", "failed", "\n", file = ff, append = T)
+	cat("# loglik =", "failed", "\n", file = ff, append = T)
+}
+
+# save all objects except pileup
+save(file = str_c(opt$outPrefix, ".Rdata"), list = ls()[!grepl("^rcmat", ls())],  compress=T)
+
 
 warnings()
 

@@ -32,7 +32,7 @@ nextflow.enable.dsl = 2
 version = '0.2.0'  // package version
 
 container = [
-    'ghcr.io': 'ghcr.io/icgc-argo-structural-variation-cn-wg/icgc-argo-sv-copy-number.facets'
+    'ghcr.io': 'ghcr.io/icgc-argo-structural-variation-cn-wg/wfpm-demo.facets'
 ]
 default_container_registry = 'ghcr.io'
 /********************************************************************/
@@ -44,32 +44,26 @@ params.container_version = ""
 params.container = ""
 
 params.cpus = 1
-params.mem = 1  // GB
-params.publish_dir = ""  // set to empty string will disable publishDir
-params.publishDirMode = 'copy'
+params.mem = 30  // GB
+params.publish_dir = "facets_outdir"  // set to empty string will disable publishDir
 params.help = null
 
 // tool specific parmas go here, add / change as needed
-params.input_file     = ""
-params.input          = null
-params.snp_pileup     = null
+params.tumor_id       = null
+params.pileup         = null
 params.genome         = 'hg38'
-params.snp_nbhd       = 250
-params.minNDepth      = 25
-params.maxNDepth      = 1000
-params.pre_cval       = 50
-params.cval1          = 200
-params.cval2          = 'NULL'
-params.max_cval       = 5000
+params.snp_nbhd       = 500
+params.minNDepth      = 5
+params.maxNDepth      = 500
+params.pre_cval       = 80
+params.cval           = 200
 params.min_nhet       = 25
 params.unmatched      = 'FALSE'
 params.minGC          = 0
 params.maxGC          = 1
-params.q              = 15
-params.Q              = 20
-params.r              = '25,0'
-params.d              = 1000
-params.test           = null
+params.seed           = 1234
+params.facetsRun      = "${baseDir}/scripts/facetsRun.R"
+params.Facets_myplot  = "${baseDir}/scripts/runFacets_myplot.R"
 
 def helpMessage() {
     log.info"""
@@ -77,30 +71,22 @@ def helpMessage() {
 USAGE
 
 The typical command for running the pipeline is as follows:
-    nextflow run facets/assets/facets-1.0.1 --input input.txt -profile cluster,singularity
+    nextflow run facets/main.nf --pileup <snp-pileup.bc.gz>
 
 Mandatory arguments:
-    --input         Tab delimited file (no header), with paths to following files:
-                    tumor_ID    normal_ID    tumor.bam    normal.bam    target.dbsnp
+    --tumor_id      Tumor ID
+    --pileup        Pileup file produced by snp-pileup (.bc.gz)
 
 Optional arguments:
-    --snp_pileup    Full path to the folder containing the snp_pileup files (you might want to use this when re-running facets)
-    --summaryPrefix Prefix for the summary files [${params.summaryPrefix}]
-    --q             (snp-pileup) Sets the minimum threshold for mapping quality [${params.q}]
-    --Q             (snp-pileup) Sets the minimum threshold for base quality [${params.Q}]
-    --r             (snp-pileup) Comma separated list of minimum read counts for a position to be output [${params.r}]
-    --d             (snp-pileup) Sets the maximum depth [${params.d}]
     --genome        Genome build (b37, GRCh37, hg19, mm9, mm10, GRCm38, hg38). [${params.genome}]
     --seed          [${params.seed}]
-    --snp_nbhd      Window size [${params.snp_nbhd}]
-    --minNDepth     Minimum depth in normal to keep the position [${params.minNDepth}]
-    --maxNDepth     Maximum depth in normal to keep the position [${params.maxNDepth}]
-    --pre_cval      Pre-processing critical value [cval1 - 50]
-    --cval1         Critical value for estimating diploid log Ratio [${params.cval1}]
-    --cval2         Starting critical value for segmentation (increases by 25 until success) [cval1 - 50]
-    --max_cval      Maximum critical value for segmentation (increases by 25 until success) [${params.max_cval}]
+    --snp_nbhd      Window size. For WES use 250, for WGS use 500 [${params.snp_nbhd}]
+    --minNDepth     Minimum depth in normal to keep the position. For WES 25 is reasonable, for WGS 5. [${params.minNDepth}]
+    --maxNDepth     Maximum depth in normal to keep the position. For WES 1000 is reasonable, for WGS 300 [${params.maxNDepth}]
+    --pre_cval      Pre-processing critical value [${params.pre_cval}]
+    --cval          Critical value for estimating diploid log Ratio [${params.cval}]
     --min_nhet      Minimum number of heterozygote snps in a segment used for bivariate t-statistic during clustering of segment [${params.min_nhet}]
-    --unmatched     Is it unmatched? [${params.unmatched}]
+    --unmatched     Is the tumor sample unmatched? [${params.unmatched}]
     --minGC         Min GC of position [${params.minGC}]
     --maxGC         Max GC of position [${params.maxGC}]
     """.stripIndent()
@@ -109,164 +95,39 @@ Optional arguments:
 if (params.help) exit 0, helpMessage()
 
 log.info ""
-log.info "input=${params.input}"
+log.info "tumor_id=${params.tumor_id}"
+log.info "pileup=${params.pileup}"
 log.info "genome=${params.genome}"
-if(params.snp_pileup != null) { log.info "snp_pileup folder provided: ${params.snp_pileup}" }
 log.info ""
 
 
 // Validate inputs
-if(params.input == null & params.test == null) error "Missing mandatory '--input' parameter"
-
-
-// Parse input parameters and create input channels
-if(params.test == null) Channel.fromPath( file(params.input) )
-        .splitCsv(sep:'\t')
-        .map { row ->
-            def tumor_id     = row[0]
-            def normal_id    = row[1]
-            def tumor_bam    = file(row[2], checkIfExists: true)
-            def tumor_bai    = file("${row[2]}.bai", checkIfExists: true)
-            def normal_bam   = file(row[3], checkIfExists: true)
-            def normal_bai   = file("${row[3]}.bai", checkIfExists: true)
-            def target_dbsnp = file(row[4], checkIfExists: true)
-            return [ tumor_id, normal_id, tumor_bam, tumor_bai, normal_bam, normal_bai, target_dbsnp ]
-        }
-        .set { input_ch }
-
-if(params.test != null) input_ch = ""
-
-if(params.test == null) Channel.fromPath( file(params.input) )
-        .splitCsv(sep:'\t')
-        .map { row ->
-            def tumor_id     = row[0]
-            def normal_id    = row[1]
-            return [ tumor_id, normal_id ]
-        }
-        .set { ch_id }
-
-if(params.test != null) ch_id = ""
-
-ch_facetsRun        = file("${baseDir}/scripts/facetsRun.R")
-ch_runFacets_myplot = file("${baseDir}/scripts/runFacets_myplot.R")
-
-if(params.snp_pileup != null) ch_pileup = file(params.snp_pileup, checkIfExists: true)
-if(params.snp_pileup == null) ch_pileup = ""
-if(params.test != null) ch_test = "--help"
-
-process copy_pileup {
-  container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
-  publishDir "facets_out/snp_pileup", mode: params.publishDirMode
-
-  cpus 1
-  memory '1 GB'
-  time { (1.hour + (1.hour * task.attempt)) }
-
-  errorStrategy 'retry'
-  maxRetries 1
-
-  input:
-  set val(tumor_id), val(normal_id) from ch_id
-  file(pileup) from ch_pileup
-
-  output:
-  file "*_q${params.q}_Q${params.Q}_d${params.maxNDepth}_r${params.min_nhet}.bc.gz" into copy_pileup_out
-  set val(tumor_id), val(normal_id) into copy_id_ch
-
-  when:
-  params.snp_pileup != null && params.test == null
-
-  shell:
-	'''
-		cp !{pileup}/!{tumor_id}__!{normal_id}__q!{params.q}_Q!{params.Q}_d!{params.maxNDepth}_r!{params.min_nhet}.bc.gz .
-	'''
-}
-
-process snp_pileup {
-  container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
-  publishDir "facets_out/snp_pileup", mode: params.publishDirMode
-
-  cpus 1
-  memory { 4.GB * task.attempt }
-  time { 5.hour * task.attempt }
-
-  errorStrategy 'retry'
-  maxRetries 1
-
-  input:
-  set val(tumor_id), val(normal_id), file(tumor_bam), file(tumor_bai), file(normal_bam), file(normal_bai), file(target_dbsnp) from input_ch
-
-  output:
-  file "*_q${params.q}_Q${params.Q}_d${params.maxNDepth}_r${params.r}.bc.gz" into pileup_out
-  set val(tumor_id), val(normal_id) into id_ch
-
-  when:
-  params.snp_pileup == null && params.test == null
-
-  shell:
-	'''
-		snp-pileup -P 100 -A -d !{params.d} -g -q !{params.q} -Q !{params.Q} -r !{params.r} !{target_dbsnp} !{tumor_id}__!{normal_id}__q!{params.q}_Q!{params.Q}_d!{params.maxNDepth}_r!{params.r}.bc.gz !{normal_bam} !{tumor_bam}
-	'''
-}
+if(params.tumor_id == null) error "Missing mandatory '--tumor_id' parameter"
+if(params.pileup == null) error "Missing mandatory '--pileup' parameter"
 
 
 process facets {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
-  publishDir "facets_out/cval1_${params.cval1}", mode: params.publishDirMode
+  publishDir "${params.publish_dir}/${task.process.replaceAll(':', '_')}", mode: "copy", enabled: params.publish_dir
 
-  cpus 2
-  memory '16 GB'
-  time { (2.hour * task.attempt) }
-
-  errorStrategy 'retry'
-  maxRetries 1
+  cpus params.cpus
+  memory "${params.mem} GB"
 
   input:
-  file pileup from copy_pileup_out.mix(pileup_out)
-  set val(tumor_id), val(normal_id) from copy_id_ch.mix(id_ch)
-  file facetsRun from ch_facetsRun
-  file runFacets_myplot from ch_runFacets_myplot
+    path pileup
+
 
   output:
-  file "*.Rdata" into ch_facets_rdata
-  file "*.out" into ch_facets_out
-  file "*.logR.pdf"
-  file "*.cncf.txt" into ch_facets_cncf
-  file "*.cncf.pdf"
-
-  when:
-  params.test == null
+    path "*.Rdata", emit: output_Rdata
+    path "*.out", emit: output_summary
+    path "*.cncf.txt", optional: true, emit: output_cncf
+    path "*.cncf.pdf", optional: true, emit: output_plot
 
 
   shell:
-	'''
-		Rscript !{facetsRun} --minNDepth !{params.minNDepth} --maxNDepth !{params.maxNDepth} --snp_nbhd !{params.snp_nbhd} --minGC !{params.minGC} --maxGC !{params.maxGC} --cval1 !{params.cval1} --cval2 !{params.cval2} --pre_cval !{params.pre_cval} --max_cval !{params.max_cval} --genome !{params.genome} --min_nhet !{params.min_nhet} --outPrefix !{tumor_id}__!{normal_id} --tumorName !{tumor_id} --normalName !{normal_id} !{pileup}
-	'''
-}
-
-process test {
-  container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
-  publishDir "facets_out", mode: params.publishDirMode
-
-  cpus 1
-  memory '0.5 GB'
-  time '1m'
-
-  errorStrategy 'terminate'
-
-  input:
-  val(help) from ch_test
-
-  output:
-  file "test.txt"
-
-  when:
-  params.test != null
-
-  shell:
-	'''
-		snp-pileup !{help} > test.txt
-	'''
+    '''
+        facetsRun.R --seed !{params.seed} --minNDepth !{params.minNDepth} --maxNDepth !{params.maxNDepth} --snp_nbhd !{params.snp_nbhd} --minGC !{params.minGC} --maxGC !{params.maxGC} --cval !{params.cval} --pre_cval !{params.pre_cval} --genome !{params.genome} --min_nhet !{params.min_nhet} --outPrefix !{params.tumor_id} --tumorName !{params.tumor_id} !{pileup}
+    '''
 }
 
 
@@ -274,6 +135,6 @@ process test {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   facets(
-    file(params.input_file)
+    file(params.pileup)
   )
 }

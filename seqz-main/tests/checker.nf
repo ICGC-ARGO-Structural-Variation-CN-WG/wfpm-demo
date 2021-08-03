@@ -34,7 +34,7 @@
 /* this block is auto-generated based on info from pkg.json where   */
 /* changes can be made if needed, do NOT modify this block manually */
 nextflow.enable.dsl = 2
-version = '0.2.0'  // package version
+version = '0.3.0'
 
 container = [
     'ghcr.io': 'ghcr.io/icgc-argo-structural-variation-cn-wg/wfpm-demo.seqz-main'
@@ -49,7 +49,6 @@ params.container = ""
 
 // tool specific parmas go here, add / change as needed
 params.seqz = ""
-params.runscript = ""
 params.expected_output = ""
 
 include { seqzMain } from '../main'
@@ -76,13 +75,11 @@ process file_smart_diff {
 workflow checker {
   take:
     seqz
-    runscript
     expected_output
 
   main:
     seqzMain(
-      seqz,
-      runscript
+      seqz
     )
 
     file_smart_diff(
@@ -95,7 +92,6 @@ workflow checker {
 workflow {
   checker(
     file(params.seqz),
-    file(params.runscript),
     file(params.expected_output)
   )
 }

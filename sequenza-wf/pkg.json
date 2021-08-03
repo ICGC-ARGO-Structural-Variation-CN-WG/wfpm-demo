@@ -1,0 +1,30 @@
+{
+    "name": "sequenza-wf",
+    "version": "0.2.0",
+    "description": "sequenza workflow",
+    "main": "main.nf",
+    "deprecated": false,
+    "keywords": [
+        "bioinformatics",
+        "seq",
+        "qc metrics"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo.git"
+    },
+    "dependencies": [
+        "github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo/seqz-preprocess@0.2.0",
+        "github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo/seqz-main@0.2.0"
+    ],
+    "devDependencies": [],
+    "contributors": [
+        {
+            "name": "lDesiree",
+            "email": "desiree.schnidrig@gmail.com"
+        }
+    ],
+    "license": "MIT",
+    "bugReport": "https://github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo/issues",
+    "homepage": "https://github.com/icgc-argo-structural-variation-cn-wg/wfpm-demo#readme"
+}

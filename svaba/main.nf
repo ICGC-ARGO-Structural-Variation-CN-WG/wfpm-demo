@@ -47,7 +47,7 @@ params.cpus = 1
 params.mem = 4  // GB
 params.publish_dir = ""  // set to empty string will disable publishDir
 
-// tool specific params go here, add / change as needed
+// tool specific parmas go here, add / change as needed
 params.input_tumour_bam = ""
 params.input_normal_bam = ""
 params.sample_id        = ""
@@ -79,7 +79,6 @@ process svaba {
     // add and initialize variables here as needed
 
     """
-    echo ${input_tumour_bai}
     mkdir -p ${params.sample_id}
     svaba run -t ${input_tumour_bam} \
 -n ${input_normal_bam} \
@@ -91,6 +90,7 @@ process svaba {
     mv ${params.sample_id}.* ${params.sample_id}/
     """
 }
+
 
 // this provides an entry point for this main script, so it can be run directly without clone the repo
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx

@@ -55,9 +55,7 @@ expected_file = file("expected/expected.somatic.indel.vcf")
 input_tumour_bai = file(params.input_tumour_bam + '.bai')
 input_normal_bai = file(params.input_normal_bam + '.bai')
 
-
 include { svaba } from '../main.nf'
-
 
 process file_smart_diff {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"

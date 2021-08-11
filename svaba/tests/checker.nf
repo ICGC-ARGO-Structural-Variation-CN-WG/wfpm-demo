@@ -77,7 +77,6 @@ process file_smart_diff {
     """
 }
 
-
 workflow checker {
   take:
     input_tumour_bam

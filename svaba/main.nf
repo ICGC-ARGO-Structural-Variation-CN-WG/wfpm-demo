@@ -69,8 +69,6 @@ process svaba {
   input:  // input, make update as needed
     path input_tumour_bam
     path input_normal_bam
-    path input_tumour_bai
-    path input_normal_bai
 
   output:  // output, make update as needed
     path "${params.sample_id}/${params.sample_id}.svaba.somatic.indel.vcf", emit: output_file
@@ -97,8 +95,6 @@ process svaba {
 workflow {
 svaba(
 params.input_tumour_bam,
-params.input_normal_bam,
-input_tumour_bai,
-input_normal_bai
+params.input_normal_bam
 )
 }

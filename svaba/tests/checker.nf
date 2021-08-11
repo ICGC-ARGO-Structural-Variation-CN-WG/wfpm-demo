@@ -86,7 +86,9 @@ workflow checker {
   main:
     svaba(
 	input_tumour_bam,
-	input_normal_bam
+	input_normal_bam,
+        input_tumour_bai,
+        input_normal_bai
     )
 
     file_smart_diff(

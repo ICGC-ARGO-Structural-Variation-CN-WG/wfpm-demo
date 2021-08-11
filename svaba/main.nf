@@ -56,8 +56,8 @@ params.ref_genome_gz    = ""
 params.ref_genome_fai   = file(params.ref_genome_gz + '.fai')
 params.output_pattern   = "*.html"  // output file name pattern
 
-input_tumour_bai = path(params.input_tumour_bam + '.bai')
-input_normal_bai = path(params.input_normal_bam + '.bai')
+params.input_tumour_bai = file(params.input_tumour_bam + '.bai')
+params.input_normal_bai = file(params.input_normal_bam + '.bai')
 
 process svaba {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"

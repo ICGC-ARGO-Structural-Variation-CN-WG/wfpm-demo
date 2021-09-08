@@ -1,6 +1,6 @@
 {
     "name": "snp-pileup",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "snp-pileup tool",
     "main": "main.nf",
     "deprecated": false,

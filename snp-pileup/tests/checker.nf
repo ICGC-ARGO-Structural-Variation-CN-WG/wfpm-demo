@@ -49,12 +49,14 @@ params.container = ""
 
 // tool specific parmas go here, add / change as needed
 // params.input_file = ""
-params.tumor_bam      = ""
-params.normal_bam     = ""
-params.dbsnp          = ""
+params.tumor = ""
+params.normal = ""
+params.dbsnp = ""
+params.ref = ""
 params.expected_output = ""
 
 include { snpPileup } from '../main'
+include { getSecondaryFiles } from './wfpr_modules/github.com/icgc-argo/data-processing-utility-tools/helper-functions@1.0.1/main.nf'
 
 
 process file_smart_diff {
@@ -77,16 +79,20 @@ process file_smart_diff {
 
 workflow checker {
   take:
-    tumor_bam
-    normal_bam
+    tumor
+    normal
     dbsnp
+    ref
+    ref_idx
     expected_output
 
   main:
     snpPileup(
-      tumor_bam,
-      normal_bam,
-      dbsnp
+      tumor,
+      normal,
+      dbsnp,
+      ref,
+      ref_idx
     )
 
     file_smart_diff(
@@ -98,9 +104,11 @@ workflow checker {
 
 workflow {
   checker(
-    file(params.tumor_bam),
-    file(params.normal_bam),
+    file(params.tumor),
+    file(params.normal),
     file(params.dbsnp),
+    file(params.ref),
+    Channel.fromPath(getSecondaryFiles(params.ref, ['fai','gzi']), checkIfExists: false).collect(),
     file(params.expected_output)
   )
 }

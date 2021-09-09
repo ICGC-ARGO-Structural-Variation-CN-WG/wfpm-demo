@@ -45,18 +45,19 @@ params.container = ""
 
 params.cpus = 1
 params.mem = 1  // GB
-params.publish_dir = "outdir"  // set to empty string will disable publishDir
+params.publish_dir = ""  // set to empty string will disable publishDir
 params.help = null
 
 // tool specific parmas go here, add / change as needed
-params.tumor_bam      = ""
-params.normal_bam     = ""
+params.tumor          = ""
+params.normal         = ""
 params.dbsnp          = "${baseDir}/resources/dbsnp_151.common.hg38.vcf.gz"
+params.ref            = ""
 params.q              = 15
 params.Q              = 20
 params.r              = '5,0'
 params.d              = 1000
-params.P              = 100
+params.P              = 500
 params.output_pattern = "*.bc.gz"  // output file name pattern
 
 
@@ -67,38 +68,44 @@ def helpMessage() {
 USAGE
 
 The typical command for running the pipeline is as follows:
-    nextflow run snp-pileup/main.nf --tumor_bam <tumor BAM> --normal_bam <normal BAM> --dbsnp <dbsnp vcf>
+    nextflow run snp-pileup/main.nf --tumor <tumor BAM/CRAM> --normal <normal BAM/CRAM> --ref <reference genome> --dbsnp <dbsnp vcf>
 
 Mandatory arguments:
-    --tumor_bam     Path to the tumor BAM.
-    --normal_bam    Path to the normal BAM.
-    --dbsnp         Path to the germline resource VCF.
-                    Default is 'snp-pileup/resources/dbsnp_151.common.hg38.vcf.gz'.
-                    You need to execute 'snp-pileup/scripts/fetch_resources.sh' to fetch this file before you can run this module.
+    --tumor     Path to the tumor file (BAM or CRAM).
+    --normal    Path to the normal file (BAM or CRAM).
+    --ref       Path to the reference genome file (the same as the one used for cram/bam).
+                The *.fai index must be available, as well as the *.gzi in case of a compressed fasta file.
+    --dbsnp     Path to the germline resource VCF.
+                Default is 'snp-pileup/resources/dbsnp_151.common.hg38.vcf.gz'.
+                You need to execute 'snp-pileup/scripts/fetch_resources.sh' to fetch this file before you can run this module.
 
 Optional arguments:
-    --r             Minimum tumor and normal read counts for a position, in that order. [${params.r}]
-    --q             Sets the minimum threshold for mapping quality [${params.q}]
-    --Q             Sets the minimum threshold for base quality [${params.Q}]
-    --d             Sets the maximum depth [${params.d}]
-    --P             Insert a pseudo SNP every [${params.P}] positions, with the total count at that position.
-                    This is used to reduce large gaps between consecutive SNPs and still get consistent read counts across the genome.
+    --r         Minimum tumor and normal read counts for a position, in that order. [${params.r}]
+    --q         Sets the minimum threshold for mapping quality [${params.q}]
+    --Q         Sets the minimum threshold for base quality [${params.Q}]
+    --d         Sets the maximum depth [${params.d}]
+    --P         Insert a pseudo SNP every [${params.P}] positions, with the total count at that position.
+                This is used to reduce large gaps between consecutive SNPs and still get consistent read counts across the genome.
     """.stripIndent()
 }
 
 if (params.help) exit 0, helpMessage()
 
 log.info ""
-log.info "tumor_bam=${params.tumor_bam}"
-log.info "normal_bam=${params.normal_bam}"
+log.info "Running snp-pileup using the following files:"
+log.info "  tumor     = ${params.tumor}"
+log.info "  normal    = ${params.normal}"
+log.info "  reference = ${params.ref}"
+log.info "  dbSNP     = ${params.dbsnp}"
 log.info ""
 
 
 // Validate inputs
-if(params.tumor_bam == null) error "Missing mandatory '--tumor_bam' parameter"
-if(params.normal_bam == null) error "Missing mandatory '--normal_bam' parameter"
+if(params.tumor == null) error "Missing mandatory '--tumor' parameter"
+if(params.normal == null) error "Missing mandatory '--normal' parameter"
+if(params.ref == null) error "Missing mandatory '--ref' parameter"
 
-
+include { getSecondaryFiles } from './wfpr_modules/github.com/icgc-argo/data-processing-utility-tools/helper-functions@1.0.1/main.nf'
 
 process snpPileup {
   container "${params.container ?: container[params.container_registry ?: default_container_registry]}:${params.container_version ?: version}"
@@ -108,21 +115,18 @@ process snpPileup {
   memory "${params.mem} GB"
 
   input:  // input, make update as needed
-    path tumor_bam
-    path normal_bam
+    path tumor
+    path normal
     path dbsnp
+    path ref
+    path ref_idx
 
   output:  // output, make update as needed
-    path "output_dir/${params.output_pattern}", emit: output_file
+    path "${params.output_pattern}", emit: output_file
 
   shell:
-    // add and initialize variables here as needed
-
     '''
-    mkdir -p output_dir
-    
-    snp-pileup -P !{params.P} -A -d !{params.d} -g -q !{params.q} -Q !{params.Q} -r !{params.r} !{dbsnp} output_dir/$(basename !{tumor_bam} .bam).bc.gz !{normal_bam} !{tumor_bam}
-
+    main.sh -t !{tumor} -n !{normal} -g !{ref} -s !{dbsnp} -P !{params.P} -d !{params.d} -q !{params.q} -Q !{params.Q} -r !{params.r} -o !{tumor}.bc.gz
     '''
 }
 
@@ -131,8 +135,10 @@ process snpPileup {
 // using this command: nextflow run <git_acc>/<repo>/<pkg_name>/<main_script>.nf -r <pkg_name>.v<pkg_version> --params-file xxx
 workflow {
   snpPileup(
-    file(params.tumor_bam),
-    file(params.normal_bam),
-    file(params.dbsnp)
+    file(params.tumor),
+    file(params.normal),
+    file(params.dbsnp),
+    file(params.ref),
+    Channel.fromPath(getSecondaryFiles(params.ref, ['fai','gzi']), checkIfExists: false).collect(),
   )
 }

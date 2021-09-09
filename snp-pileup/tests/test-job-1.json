@@ -1,7 +1,8 @@
 {
-    "tumor_bam": "input/test_T.bam",
-    "normal_bam": "input/test_N.bam",
-    "dbsnp": "input/test.dbsnp_138.hg19.vcf",
+    "tumor": "input/test_T.cram",
+    "normal": "input/test_N.cram",
+    "ref": "input/test.fasta.gz",
+    "dbsnp": "input/test.dbsnp.vcf.gz",
     "expected_output": "expected/expected.bc.gz",
     "publish_dir": "outdir",
     "cpus": 1,

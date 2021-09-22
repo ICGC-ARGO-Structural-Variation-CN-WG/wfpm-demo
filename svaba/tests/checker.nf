@@ -56,7 +56,6 @@ params.ref_genome_bwt = file( params.ref_genome_gz+'.bwt' )
 params.ref_genome_ann = file( params.ref_genome_gz+'.ann' )
 params.ref_genome_amb = file( params.ref_genome_gz+'.amb' )
 params.ref_genome_pac = file( params.ref_genome_gz+'.pac' )
-params.ref_genome_alt = file( params.ref_genome_gz+'.alt' )
 expected_file = file("expected/expected.somatic.indel.vcf")
 
 include { svaba } from '../main.nf'
@@ -92,7 +91,6 @@ workflow checker {
     ref_genome_ann
     ref_genome_amb
     ref_genome_pac
-    ref_genome_alt
     expected_output
 
   main:
@@ -108,7 +106,6 @@ workflow checker {
         ref_genome_ann,
         ref_genome_amb,
         ref_genome_pac,
-        ref_genome_alt
     )
 
     file_smart_diff(
@@ -130,7 +127,6 @@ workflow {
     file( params.ref_genome_gz+'.ann'),
     file( params.ref_genome_gz+'.amb'),
     file( params.ref_genome_gz+'.pac'),
-    file( params.ref_genome_gz+'.alt'),
     file(expected_file)
   )
 }

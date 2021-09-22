@@ -1,5 +1,17 @@
-Manta User Guide
-================
+Manta
+=====
+
+To run with NextFlow you can execute:
+`nextflow run main.nf \ 
+	--normalBam normal.bam \
+	--tumorBam tumor.bam \
+	--referenceFasta reference.fna \
+	--normalBai normal.bam.bai  \
+	--tumorBai tumor.bam.bai \
+	--referenceFai reference.fna.fai`
+
+
+#Manta User Guide
 
 ## Table of Contents
 

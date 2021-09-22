@@ -54,6 +54,9 @@ params.help = null
 params.normalBam = ""
 params.tumorBam = ""
 params.referenceFasta = ""
+params.normalBai = ""
+params.tumorBai = ""
+params.referenceFai = ""
 params.runDir = ""
 
 
@@ -161,8 +164,10 @@ process manta {
   input:  // input, make update as needed
     path normalBam
     path tumorBam
+    path normalBai
+    path tumorBai
     path referenceFasta
-    
+    path referenceFai
 
   output:  // output, make update as needed
     path "output_dir", emit: output_file
@@ -171,16 +176,21 @@ process manta {
     // add and initialize variables here as needed
 
     """
+
+
+
+
     mkdir -p output_dir
+
+    echo "RUNNING VARIANT CALLER"
 
     configManta.py \
     --normalBam ${normalBam} \
-    --tumorBam ${tumorBam}
-    --referenceFasta ${referenceFasta}
-    --runDir output_dir \
+    --tumorBam ${tumorBam} \
+    --referenceFasta ${referenceFasta} \
+    --runDir output_dir 
     
     output_dir/runWorkflow.py 
-
     """
 
 
@@ -193,6 +203,9 @@ workflow {
   manta(
     file(params.normalBam),
     file(params.tumorBam),
-    file(params.referenceFasta)
+    file(params.normalBai),
+    file(params.tumorBai),   
+    file(params.referenceFasta),
+    file(params.referenceFai)
   )
 }

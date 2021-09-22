@@ -105,7 +105,7 @@ workflow checker {
         ref_genome_bwt,
         ref_genome_ann,
         ref_genome_amb,
-        ref_genome_pac,
+        ref_genome_pac
     )
 
     file_smart_diff(

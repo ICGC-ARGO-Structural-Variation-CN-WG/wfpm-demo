@@ -58,7 +58,6 @@ params.ref_genome_bwt = file( params.ref_genome_gz+'.bwt' )
 params.ref_genome_ann = file( params.ref_genome_gz+'.ann' )
 params.ref_genome_amb = file( params.ref_genome_gz+'.amb' )
 params.ref_genome_pac = file( params.ref_genome_gz+'.pac' )
-params.ref_genome_alt = file( params.ref_genome_gz+'.alt' )
 params.dbsnp_file       = "reference/af-only-gnomad.pass-only.hg38.INDELS-chr3.vcf"
 params.output_pattern   = "*.html"  // output file name pattern
 
@@ -81,7 +80,6 @@ process svaba {
     path ref_genome_ann
     path ref_genome_amb
     path ref_genome_pac
-    path ref_genome_alt
 
   output:  // output, make update as needed
     path "${params.sample_id}/${params.sample_id}.svaba.somatic.indel.vcf", emit: output_file
